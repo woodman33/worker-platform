@@ -1,15 +1,15 @@
 {
 	"name": "worker-platform",
-	"description": "A Cloudflare Worker template that creates and deploys Workers to a Dispatch Namespace via the Cloudflare SDK.",
+	"description": "Cloudflare Worker platform with D1 storage, KV namespace, OpenCode, Codex, FastMCP, and OpenAuth integration.",
 	"cloudflare": {
-		"label": "Worker Publisher Template",
+		"label": "Worker Platform with AI Agent SDKs",
 		"products": [
 			"Workers",
-			"Workers for Platforms"
+			"Workers for Platforms",
+			"D1",
+			"KV"
 		],
 		"categories": [],
-		"preview_icon_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/b1123d34-c3a4-446c-6574-8b67c7ac4400/public",
-		"preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/5012f8d4-59bc-4f1d-fb7e-7e6269d3da00/preview",
 		"publish": true,
 		"bindings": {
 			"READONLY": {
@@ -18,18 +18,28 @@
 		}
 	},
 	"dependencies": {
-		"cloudflare": "5.2.0"
+		"cloudflare": "5.2.0",
+		"hono": "^4.8.9",
+		"@openauthjs/openauth": "^0.4.3",
+		"valibot": "^1.2.0",
+		"@anthropic-ai/sdk": "^0.39.0",
+		"@modelcontextprotocol/sdk": "^1.25.0",
+		"ai": "^5.0.0-beta.34",
+		"zod": "^3.24.0"
 	},
 	"devDependencies": {
 		"tsx": "4.21.0",
 		"typescript": "5.9.3",
-		"wrangler": "4.56.0"
+		"wrangler": "4.56.0",
+		"@cloudflare/workers-types": "^4.20250312.0"
 	},
 	"private": true,
 	"scripts": {
 		"deploy": "npm run deploy:wfp && wrangler deploy",
 		"deploy:wfp": "tsx scripts/deploy-wfp.ts",
 		"dev": "wrangler dev",
-		"start": "wrangler dev"
+		"start": "wrangler dev",
+		"db:migrate": "wrangler d1 execute worker-platform-db --local --file=./migrations/0001_init.sql",
+		"db:migrate:remote": "wrangler d1 execute worker-platform-db --remote --file=./migrations/0001_init.sql"
 	}
 }

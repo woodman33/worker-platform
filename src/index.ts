@@ -1,52 +1,91 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
 import Cloudflare from "cloudflare";
+import type { Env } from "./types";
+import { authMiddleware } from "./lib/auth";
+import { handleRest } from "./lib/rest";
+import { mcp } from "./routes/mcp";
+import { agents } from "./routes/agents";
+import { auth } from "./routes/auth";
+import { openapi } from "./routes/openapi";
+import { chatui } from "./routes/chatui";
 
-// Deploy function (copied from deploy-wfp.ts)
-async function deploySnippetToNamespace(
-	opts: {
-		namespaceName: string;
-		scriptName: string;
-		code: string;
-		bindings?: Array<
-			| { type: "plain_text"; name: string; text: string }
-			| { type: "kv_namespace"; name: string; namespace_id: string }
-			| { type: "r2_bucket"; name: string; bucket_name: string }
-		>;
-	},
-	env: {
-		CLOUDFLARE_API_TOKEN: string;
-		CLOUDFLARE_ACCOUNT_ID: string;
-	},
-) {
-	const { namespaceName, scriptName, code, bindings = [] } = opts;
+const app = new Hono<{ Bindings: Env }>();
 
-	const cf = new Cloudflare({
-		apiToken: env.CLOUDFLARE_API_TOKEN,
-	});
+// Global CORS
+app.use("*", cors());
 
-	// Ensure dispatch namespace exists
+// Health check
+app.get("/health", (c) =>
+	c.json({
+		status: "ok",
+		services: ["d1", "kv", "mcp", "openauth", "codex", "opencode", "chat"],
+		version: "1.0.0",
+	}),
+);
+
+// OpenAPI spec
+app.route("/", openapi);
+
+// Auth routes (OpenAuth-compatible)
+app.route("/auth", auth);
+
+// MCP routes (FastMCP-compatible)
+app.route("/mcp", mcp);
+
+// Agent routes (Codex, OpenCode, HF Chat)
+app.route("/agents", agents);
+
+// HuggingFace Chat UI compatible endpoints
+app.route("/chat", chatui);
+app.route("/", chatui);
+
+// D1 REST API
+app.all("/rest/*", authMiddleware, handleRest);
+
+// Raw SQL query endpoint
+app.post("/query", authMiddleware, async (c) => {
+	const { query, params } = await c.req.json();
+	if (!query) return c.json({ error: "Query is required" }, 400);
+	const results = await c.env.DB.prepare(query)
+		.bind(...(params || []))
+		.all();
+	return c.json(results);
+});
+
+// Worker deployment
+app.post("/deploy", async (c) => {
+	const isReadOnly = c.env.READONLY === "true" || c.env.READONLY === true;
+	if (isReadOnly) {
+		return c.json({ error: "Read-only mode enabled" }, 403);
+	}
+
+	const { scriptName, code } = await c.req.json();
+	if (!scriptName || !code) {
+		return c.json({ error: "Missing scriptName or code" }, 400);
+	}
+
+	const cf = new Cloudflare({ apiToken: c.env.CLOUDFLARE_API_TOKEN });
+	const namespaceName = "my-dispatch-namespace";
+
 	try {
 		await cf.workersForPlatforms.dispatch.namespaces.get(namespaceName, {
-			account_id: env.CLOUDFLARE_ACCOUNT_ID,
+			account_id: c.env.CLOUDFLARE_ACCOUNT_ID,
 		});
 	} catch {
 		await cf.workersForPlatforms.dispatch.namespaces.create({
-			account_id: env.CLOUDFLARE_ACCOUNT_ID,
+			account_id: c.env.CLOUDFLARE_ACCOUNT_ID,
 			name: namespaceName,
 		});
 	}
 
 	const moduleFileName = `${scriptName}.mjs`;
-
-	// Upload worker to namespace
 	await cf.workersForPlatforms.dispatch.namespaces.scripts.update(
 		namespaceName,
 		scriptName,
 		{
-			account_id: env.CLOUDFLARE_ACCOUNT_ID,
-			metadata: {
-				main_module: moduleFileName,
-				bindings,
-			},
+			account_id: c.env.CLOUDFLARE_ACCOUNT_ID,
+			metadata: { main_module: moduleFileName, bindings: [] },
 			files: [
 				new File([code], moduleFileName, {
 					type: "application/javascript+module",
@@ -55,315 +94,112 @@ async function deploySnippetToNamespace(
 		},
 	);
 
-	return { namespace: namespaceName, script: scriptName };
-}
+	// Record in D1
+	await c.env.DB.prepare(
+		"INSERT INTO workers (name, namespace, code) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET code = ?, updated_at = datetime('now')",
+	)
+		.bind(scriptName, namespaceName, code, code)
+		.run();
 
-const HTML_UI = ({ isReadOnly }: { isReadOnly: boolean }) => `<!DOCTYPE html>
+	return c.json({ namespace: namespaceName, script: scriptName });
+});
+
+// UI - serve the worker publisher
+app.get("/", (c) => {
+	const isReadOnly = c.env.READONLY === "true" || c.env.READONLY === true;
+	return c.html(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Worker Publisher</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#x1F680;</text></svg>">
+  <title>Worker Platform</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #fef7ed;
-      color: #1a1a1a;
-      line-height: 1.6;
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      font-size: 3rem;
-      font-weight: 900;
-      color: #1a1a1a;
-      text-shadow: 4px 4px 0px #fb923c;
-      margin-bottom: 2rem;
-      text-transform: uppercase;
-      letter-spacing: -0.02em;
-    }
-
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-
-    label {
-      display: block;
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      color: #1a1a1a;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    input, textarea {
-      width: 100%;
-      padding: 1rem;
-      border: 4px solid #1a1a1a;
-      background: white;
-      font-family: "JetBrains Mono", "Fira Code", monospace;
-      font-size: 1rem;
-      box-shadow: 8px 8px 0px #fb923c;
-      transition: all 0.1s ease;
-    }
-
-    input:focus, textarea:focus {
-      outline: none;
-      transform: translate(-2px, -2px);
-      box-shadow: 12px 12px 0px #fb923c;
-    }
-
-    textarea {
-      height: 300px;
-      resize: vertical;
-    }
-
-    button {
-      background: #fb923c;
-      color: #1a1a1a;
-      border: 4px solid #1a1a1a;
-      padding: 1rem 2rem;
-      font-weight: 900;
-      font-size: 1.1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      cursor: pointer;
-      box-shadow: 8px 8px 0px #1a1a1a;
-      transition: all 0.1s ease;
-      font-family: inherit;
-    }
-
-    button:hover {
-      transform: translate(-2px, -2px);
-      box-shadow: 12px 12px 0px #1a1a1a;
-    }
-
-    button:active {
-      transform: translate(2px, 2px);
-      box-shadow: 4px 4px 0px #1a1a1a;
-    }
-
-    button:disabled {
-      background: #9ca3af;
-      color: #6b7280;
-      cursor: not-allowed;
-      box-shadow: 4px 4px 0px #6b7280;
-    }
-
-    button:disabled:hover {
-      transform: none;
-      box-shadow: 4px 4px 0px #6b7280;
-    }
-
-    .result {
-      margin-top: 2rem;
-      padding: 1.5rem;
-      border: 4px solid #1a1a1a;
-      background: white;
-      box-shadow: 8px 8px 0px #fb923c;
-      font-weight: 600;
-    }
-
-    .result.success {
-      background: #dcfce7;
-      border-color: #166534;
-      box-shadow: 8px 8px 0px #22c55e;
-    }
-
-    .result.error {
-      background: #fef2f2;
-      border-color: #dc2626;
-      box-shadow: 8px 8px 0px #ef4444;
-    }
-
-    .result a {
-      color: #fb923c;
-      font-weight: 900;
-      text-decoration: none;
-      border-bottom: 3px solid #fb923c;
-    }
-
-    .result a:hover {
-      background: #fb923c;
-      color: #1a1a1a;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+    .nav { background: #1e293b; border-bottom: 1px solid #334155; padding: 1rem 2rem; display: flex; gap: 2rem; align-items: center; }
+    .nav h1 { font-size: 1.25rem; color: #f97316; }
+    .nav a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { color: #f97316; }
+    .container { max-width: 1000px; margin: 2rem auto; padding: 0 2rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; }
+    .card h3 { color: #f97316; margin-bottom: 0.5rem; }
+    .card p { color: #94a3b8; font-size: 0.9rem; line-height: 1.5; }
+    .card a { display: inline-block; margin-top: 1rem; color: #f97316; text-decoration: none; font-weight: 600; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .badge-green { background: #065f46; color: #6ee7b7; }
+    .badge-blue { background: #1e3a5f; color: #93c5fd; }
+    .badge-orange { background: #7c2d12; color: #fdba74; }
   </style>
 </head>
 <body>
+  <nav class="nav">
+    <h1>Worker Platform</h1>
+    <a href="/openapi.json">OpenAPI</a>
+    <a href="/mcp">MCP</a>
+    <a href="/agents/models">Models</a>
+    <a href="/health">Health</a>
+    <a href="/auth/authorize?redirect_uri=${encodeURIComponent("/")}&client_id=platform&response_type=code">Sign In</a>
+  </nav>
   <div class="container">
-    <h1>Worker Publisher</h1>
-    <form id="deployForm">
-      <div class="form-group">
-        <label for="scriptName">Script Name</label>
-        <input type="text" id="scriptName" placeholder="my-worker" required>
+    <h2>Integrated AI Worker Platform</h2>
+    <p style="color: #94a3b8; margin-top: 0.5rem;">D1 Storage + KV Namespace + MCP Tools + Agent SDKs + OpenAuth</p>
+    <div class="cards">
+      <div class="card">
+        <h3>MCP Server <span class="badge badge-green">FastMCP</span></h3>
+        <p>Model Context Protocol tools and resources. Register custom tools backed by Workers or built-in D1/KV operations.</p>
+        <a href="/mcp">Explore Tools &rarr;</a>
       </div>
-      <div class="form-group">
-        <label for="code">Worker Code</label>
-        <textarea id="code">export default {
-  async fetch(request, env, ctx) {
-    // Get worker name from URL path
-    const url = new URL(request.url);
-    const workerName = url.pathname.split('/')[1] || 'Your Worker';
-
-    const html = '<!DOCTYPE html>' +
-      '<html><head><meta charset="UTF-8">' +
-      '<title>' + workerName + ' Deployed!</title>' +
-      '<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23fb923c%22/></svg>">' +
-      '<style>* { margin: 0; padding: 0; box-sizing: border-box; }' +
-      'body { font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif; background: #fef7ed; color: #1a1a1a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }' +
-      '.container { text-align: center; max-width: 600px; }' +
-      'h1 { font-size: 4rem; font-weight: 900; color: #1a1a1a; text-shadow: 6px 6px 0px #fb923c; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: -0.02em; word-break: break-word; }' +
-      '.deployed-badge { background: #fb923c; color: #1a1a1a; border: 4px solid #1a1a1a; padding: 1.5rem 3rem; font-weight: 900; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 12px 12px 0px #1a1a1a; display: inline-block; margin-bottom: 3rem; transform: rotate(-2deg); }' +
-      'p { font-size: 1.3rem; font-weight: 600; margin-bottom: 2rem; color: #374151; }' +
-      '.success-emoji { font-size: 3rem; margin-bottom: 1rem; display: block; }' +
-      '.deploy-more-btn { background: #22c55e; color: #1a1a1a; border: 4px solid #1a1a1a; padding: 1rem 2rem; font-weight: 900; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; display: inline-block; margin-top: 2rem; box-shadow: 8px 8px 0px #1a1a1a; transition: all 0.1s ease; transform: rotate(1deg); }' +
-      '.deploy-more-btn:hover { transform: rotate(1deg) translate(-2px, -2px); box-shadow: 12px 12px 0px #1a1a1a; }' +
-      '.deploy-more-btn:active { transform: rotate(1deg) translate(2px, 2px); box-shadow: 4px 4px 0px #1a1a1a; }' +
-      '</style></head><body><div class="container">' +
-      '<h1>' + workerName.toUpperCase() + '</h1>' +
-      '<div class="deployed-badge">IS NOW DEPLOYED!</div>' +
-      '<p>Your Cloudflare Worker is live and ready to serve the world!</p>' +
-      '<a href="/" class="deploy-more-btn">DEPLOY MORE!</a>' +
-      '</div></body></html>';
-
-    return new Response(html, {
-      headers: { 'Content-Type': 'text/html' }
-    });
-  }
-};</textarea>
+      <div class="card">
+        <h3>Agent Sessions <span class="badge badge-blue">AI SDKs</span></h3>
+        <p>Create sessions with Codex, OpenCode, or HuggingFace Chat agents. Full conversation history stored in D1.</p>
+        <a href="/agents/sessions">View Sessions &rarr;</a>
       </div>
-      <button type="submit"${isReadOnly ? " disabled" : ""}>Deploy Worker</button>
-    </form>
-    ${isReadOnly ? '<div class="result error">Deployment is disabled in read-only mode</div>' : ""}
-    <div id="result"></div>
+      <div class="card">
+        <h3>D1 REST API <span class="badge badge-orange">CRUD</span></h3>
+        <p>Full REST API over any D1 table. Supports filtering, sorting, pagination, and raw SQL queries.</p>
+        <a href="/rest/users">Browse Data &rarr;</a>
+      </div>
+      <div class="card">
+        <h3>Worker Deploy ${isReadOnly ? '<span class="badge" style="background:#7f1d1d;color:#fca5a5;">Read Only</span>' : ""}</h3>
+        <p>Deploy JavaScript workers to the dispatch namespace. Workers are automatically registered in D1.</p>
+        <a href="/deploy">Deploy &rarr;</a>
+      </div>
+      <div class="card">
+        <h3>OpenAuth <span class="badge badge-green">OAuth 2.0</span></h3>
+        <p>OpenAuth-compatible authentication with password provider, KV session storage, and D1 user management.</p>
+        <a href="/auth/.well-known/openid-configuration">Discovery &rarr;</a>
+      </div>
+      <div class="card">
+        <h3>HuggingFace Models</h3>
+        <p>Browse available models from the HuggingFace Router for inference in chat sessions.</p>
+        <a href="/agents/models">View Models &rarr;</a>
+      </div>
+    </div>
   </div>
-
-  <script>
-    const isReadOnly = ${isReadOnly};
-
-    document.getElementById('deployForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const scriptName = document.getElementById('scriptName').value;
-      const code = document.getElementById('code').value;
-      const resultDiv = document.getElementById('result');
-
-      resultDiv.innerHTML = '<div style="font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;">Deploying...</div>';
-
-      try {
-        const response = await fetch('/deploy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scriptName, code })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          resultDiv.innerHTML = \`<div class="result success">Successfully deployed worker "\${result.script}"! Redirecting...</div>\`;
-          // Redirect to the deployed worker after 2 seconds
-          setTimeout(() => {
-            window.location.href = '/' + result.script;
-          }, 2000);
-        } else {
-          resultDiv.innerHTML = \`<div class="result error">Error: \${result.error}</div>\`;
-        }
-      } catch (error) {
-        resultDiv.innerHTML = \`<div class="result error">Error: \${error.message}</div>\`;
-      }
-    });
-  </script>
 </body>
-</html>`;
+</html>`);
+});
 
-export default {
-	async fetch(
-		request: Request,
-		env: {
-			CLOUDFLARE_API_TOKEN: string;
-			CLOUDFLARE_ACCOUNT_ID: string;
-			DISPATCHER: any;
-			READONLY: string | boolean;
-		},
+// Worker dispatch - must be last (catch-all)
+app.all("/:workerName{[^/]+}/*", async (c) => {
+	const workerName = c.req.param("workerName");
+	// Skip known routes
+	if (
+		["auth", "mcp", "agents", "rest", "query", "deploy", "health"].includes(
+			workerName,
+		)
 	) {
-		const url = new URL(request.url);
-		const pathSegments = url.pathname.split("/").filter(Boolean);
-		const isReadOnly = env.READONLY === "true" || env.READONLY === true;
-
-		// Handle UI route
-		if (pathSegments.length === 0) {
-			return new Response(HTML_UI({ isReadOnly }), {
-				headers: { "Content-Type": "text/html" },
-			});
+		return c.notFound();
+	}
+	try {
+		const worker = c.env.DISPATCHER.get(workerName);
+		return await worker.fetch(c.req.raw);
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : "Unknown error";
+		if (msg.startsWith("Worker not found")) {
+			return c.json({ error: `Worker '${workerName}' not found` }, 404);
 		}
+		return c.json({ error: "Internal error" }, 500);
+	}
+});
 
-		// Handle deploy endpoint
-		if (pathSegments[0] === "deploy" && request.method === "POST") {
-			if (isReadOnly) {
-				return new Response(
-					JSON.stringify({ error: "Read-only mode enabled" }),
-					{
-						status: 403,
-						headers: { "Content-Type": "application/json" },
-					},
-				);
-			}
-			try {
-				const { scriptName, code } = await request.json();
-
-				if (!scriptName || !code) {
-					return new Response(
-						JSON.stringify({ error: "Missing scriptName or code" }),
-						{
-							status: 400,
-							headers: { "Content-Type": "application/json" },
-						},
-					);
-				}
-
-				const result = await deploySnippetToNamespace(
-					{
-						namespaceName: "my-dispatch-namespace",
-						scriptName,
-						code,
-					},
-					env,
-				);
-
-				return new Response(JSON.stringify(result), {
-					headers: { "Content-Type": "application/json" },
-				});
-			} catch (error) {
-				return new Response(JSON.stringify({ error: error.message }), {
-					status: 500,
-					headers: { "Content-Type": "application/json" },
-				});
-			}
-		}
-
-		// Handle worker dispatch (existing functionality)
-		const workerName = pathSegments[0];
-
-		try {
-			const worker = env.DISPATCHER.get(workerName);
-			return await worker.fetch(request);
-		} catch (e) {
-			if (e.message.startsWith("Worker not found")) {
-				return new Response(`Worker '${workerName}' not found`, {
-					status: 404,
-				});
-			}
-			return new Response("Internal error", { status: 500 });
-		}
-	},
-};
+export default app;

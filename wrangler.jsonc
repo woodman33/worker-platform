@@ -3,6 +3,7 @@
 	"name": "worker-platform",
 	"main": "./src/index.ts",
 	"compatibility_date": "2025-10-08",
+	"compatibility_flags": ["nodejs_compat"],
 	"upload_source_maps": true,
 	"dispatch_namespaces": [
 		{
@@ -11,11 +12,36 @@
 			"remote": true
 		}
 	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "worker-platform-db",
+			"database_id": "00000000-0000-0000-0000-000000000001"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "00000000000000000000000000000001"
+		},
+		{
+			"binding": "AUTH_STORAGE",
+			"id": "00000000000000000000000000000002"
+		},
+		{
+			"binding": "SESSION_STORE",
+			"id": "00000000000000000000000000000003"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
 	"vars": {
 		"CLOUDFLARE_ACCOUNT_ID": "091c9e59ca0fc3bea9f9d432fa12a3b1",
-		"READONLY": "true"
+		"READONLY": "false",
+		"OPENAUTH_ISSUER_URL": "https://auth.workers.dev",
+		"OPENCODE_API_URL": "https://opencode.workers.dev",
+		"CODEX_API_URL": "https://codex.workers.dev",
+		"HF_CHAT_UI_URL": "https://huggingface.co/chat"
 	}
 }
