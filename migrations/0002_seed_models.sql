@@ -40,7 +40,9 @@ INSERT OR IGNORE INTO hf_models (model_id, description, architecture, capabiliti
 ('intfloat/multilingual-e5-large', 'Multilingual text embeddings for search and retrieval', 'Dense', 'embeddings,multilingual', 'available'),
 ('facebook/detr-resnet-50', 'Object detection transformer on ResNet-50 backbone', 'Dense', 'object-detection,vision', 'available'),
 ('google-bert/bert-large-uncased-whole-word-masking-finetuned-squad', 'BERT large for question answering on SQuAD', 'Dense', 'qa,nlp', 'available'),
-('medicalai/ClinicalBERT', 'BERT fine-tuned on clinical notes for medical NLP', 'Dense', 'medical,nlp', 'available');
+('medicalai/ClinicalBERT', 'BERT fine-tuned on clinical notes for medical NLP', 'Dense', 'medical,nlp', 'available'),
+-- Moonshot
+('moonshotai/Kimi-K2-Instruct-0905', 'Moonshot MoE instruction model for multilingual reasoning', 'MoE', 'reasoning,multilingual,instruction', 'available');
 
 -- Seed built-in MCP tools
 INSERT OR IGNORE INTO mcp_tools (name, description, input_schema) VALUES
