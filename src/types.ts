@@ -1,3 +1,11 @@
+// Hono context variables set by middleware
+export interface Variables {
+	user: { id: number; email: string; role: string };
+	userId: number;
+	apiKeyId: number;
+	userCredits: number;
+}
+
 export interface Env {
 	// Cloudflare bindings
 	DB: D1Database;
@@ -21,6 +29,8 @@ export interface Env {
 	ANTHROPIC_API_KEY: string;
 	HF_API_TOKEN: string;
 	OPENROUTER_API_KEY: string;
+	STRIPE_SECRET_KEY: string;
+	STRIPE_WEBHOOK_SECRET: string;
 }
 
 export interface User {

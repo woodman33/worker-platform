@@ -18,14 +18,7 @@
 		}
 	},
 	"dependencies": {
-		"cloudflare": "5.2.0",
-		"hono": "^4.8.9",
-		"@openauthjs/openauth": "^0.4.3",
-		"valibot": "^1.2.0",
-		"@anthropic-ai/sdk": "^0.39.0",
-		"@modelcontextprotocol/sdk": "^1.25.0",
-		"ai": "^5.0.0-beta.34",
-		"zod": "^3.24.0"
+		"hono": "^4.8.9"
 	},
 	"devDependencies": {
 		"tsx": "4.21.0",
@@ -39,7 +32,7 @@
 		"deploy:wfp": "tsx scripts/deploy-wfp.ts",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
-		"db:migrate": "wrangler d1 execute worker-platform-db --local --file=./migrations/0001_init.sql",
-		"db:migrate:remote": "wrangler d1 execute worker-platform-db --remote --file=./migrations/0001_init.sql"
+		"db:migrate": "wrangler d1 execute worker-platform-db --local --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0003_billing.sql",
+		"db:migrate:remote": "wrangler d1 execute worker-platform-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0003_billing.sql"
 	}
 }
