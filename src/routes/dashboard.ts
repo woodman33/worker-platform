@@ -304,8 +304,8 @@ fetch(API + "/v1/models").then(r => r.json()).then(data => {
     opt.textContent = m.id;
     select.appendChild(opt);
   });
-  // Default to a reliable fast model
-  const preferred = ["Qwen/Qwen3-235B-A22B", "meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-R1"];
+  // Default to Qwen 3.5 flagship
+  const preferred = ["Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3.5-122B-A10B", "Qwen/Qwen3.5-35B-A3B", "deepseek-ai/DeepSeek-V3.2"];
   for (const p of preferred) {
     const found = data.data.find(m => m.id === p);
     if (found) { select.value = found.id; break; }
