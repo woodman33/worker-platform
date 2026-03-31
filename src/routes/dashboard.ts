@@ -232,12 +232,12 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       <div>
         <label>Model</label>
         <select id="code-model">
-          <option value="Qwen/Qwen2.5-Coder-32B-Instruct">Qwen2.5-Coder-32B (Best)</option>
-          <option value="deepseek-ai/DeepSeek-Coder-V2-Instruct">DeepSeek-Coder-V2</option>
-          <option value="Qwen/Qwen3-235B-A22B-Instruct">Qwen3-235B (Reasoning)</option>
+          <option value="Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B (Best)</option>
+          <option value="Qwen/Qwen2.5-Coder-32B-Instruct">Qwen2.5-Coder-32B</option>
+          <option value="deepseek-ai/DeepSeek-V3.2">DeepSeek-V3.2</option>
           <option value="deepseek-ai/DeepSeek-R1">DeepSeek-R1 (Reasoning)</option>
           <option value="meta-llama/Llama-3.3-70B-Instruct">Llama-3.3-70B</option>
-          <option value="mistralai/Mistral-Small-24B-Instruct-2501">Mistral Small 24B</option>
+          <option value="Qwen/Qwen3.5-397B-A17B">Qwen3.5-397B</option>
         </select>
       </div>
       <div>
@@ -423,7 +423,7 @@ fetch(API + "/v1/models").then(r => r.json()).then(data => {
     select.appendChild(opt);
   });
   // Default to best verified models
-  const preferred = ["Qwen/Qwen3-235B-A22B-Instruct", "deepseek-ai/DeepSeek-V3-0324", "meta-llama/Llama-3.3-70B-Instruct", "Qwen/Qwen3-32B"];
+  const preferred = ["Qwen/Qwen3.5-397B-A17B", "deepseek-ai/DeepSeek-V3.2", "Qwen/Qwen3-235B-A22B-Instruct-2507", "meta-llama/Llama-3.3-70B-Instruct"];
   for (const p of preferred) {
     const found = chatModels.find(m => m.id === p);
     if (found) { select.value = found.id; break; }

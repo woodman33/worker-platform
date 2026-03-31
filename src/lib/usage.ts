@@ -3,24 +3,23 @@ import type { Env } from "../types";
 // Cost per 1K tokens in credits
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // === FLAGSHIP / LARGE ===
-  "Qwen/Qwen3-235B-A22B-Instruct": { input: 0.5, output: 1.5 },
+  "Qwen/Qwen3.5-397B-A17B": { input: 0.6, output: 2.0 },
+  "Qwen/Qwen3-235B-A22B-Instruct-2507": { input: 0.5, output: 1.5 },
+  "Qwen/Qwen3-Coder-480B-A35B-Instruct": { input: 0.6, output: 2.0 },
+  "deepseek-ai/DeepSeek-V3.2": { input: 0.4, output: 1.2 },
   "deepseek-ai/DeepSeek-R1": { input: 0.5, output: 2.0 },
   "deepseek-ai/DeepSeek-V3-0324": { input: 0.4, output: 1.2 },
   "deepseek-ai/DeepSeek-R1-Distill-Llama-70B": { input: 0.2, output: 0.6 },
   "meta-llama/Llama-3.3-70B-Instruct": { input: 0.2, output: 0.6 },
   "meta-llama/Llama-3.1-70B-Instruct": { input: 0.2, output: 0.6 },
   "meta-llama/Llama-3.2-90B-Vision-Instruct": { input: 0.4, output: 1.2 },
-  "meta-llama/Llama-4-Scout-17B-16E-Instruct": { input: 0.2, output: 0.6 },
   "Qwen/Qwen2.5-72B-Instruct": { input: 0.3, output: 1.0 },
   "Qwen/Qwen2.5-VL-72B-Instruct": { input: 0.4, output: 1.2 },
-  "CohereForAI/c4ai-command-r-plus": { input: 0.4, output: 1.2 },
   "openai/gpt-oss-120b": { input: 0.5, output: 1.5 },
-  "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF": { input: 0.2, output: 0.6 },
   "moonshotai/Kimi-K2-Instruct": { input: 0.3, output: 1.0 },
-  "deepseek-ai/DeepSeek-Coder-V2-Instruct": { input: 0.2, output: 0.6 },
 
   // === MEDIUM ===
-  "Qwen/Qwen3-30B-A3B-Instruct": { input: 0.1, output: 0.3 },
+  "Qwen/Qwen3-30B-A3B-Instruct-2507": { input: 0.1, output: 0.3 },
   "Qwen/Qwen3-32B": { input: 0.2, output: 0.6 },
   "Qwen/Qwen2.5-32B-Instruct": { input: 0.2, output: 0.6 },
   "Qwen/Qwen2.5-Coder-32B-Instruct": { input: 0.2, output: 0.6 },
@@ -56,14 +55,6 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "stabilityai/stable-diffusion-3.5-large": { input: 0, output: 5.0 },
   "stabilityai/stable-diffusion-3.5-large-turbo": { input: 0, output: 3.0 },
   "stabilityai/stable-diffusion-3.5-medium": { input: 0, output: 3.0 },
-
-  // === EMBEDDINGS (per 1K tokens) ===
-  "BAAI/bge-large-en-v1.5": { input: 0.01, output: 0 },
-  "BAAI/bge-small-en-v1.5": { input: 0.005, output: 0 },
-  "sentence-transformers/all-MiniLM-L6-v2": { input: 0.005, output: 0 },
-
-  // === SPEECH ===
-  "openai/whisper-large-v3": { input: 0.1, output: 0 },
 };
 
 const DEFAULT_PRICING = { input: 0.1, output: 0.3 };
