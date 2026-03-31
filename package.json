@@ -32,7 +32,7 @@
 		"deploy:wfp": "tsx scripts/deploy-wfp.ts",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
-		"db:migrate": "wrangler d1 execute worker-platform-db --local --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0003_billing.sql",
-		"db:migrate:remote": "wrangler d1 execute worker-platform-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0003_billing.sql"
+		"db:migrate": "wrangler d1 execute worker-platform-db --local --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0003_billing.sql && wrangler d1 execute worker-platform-db --local --file=./migrations/0004_fix_models.sql",
+		"db:migrate:remote": "wrangler d1 execute worker-platform-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0002_seed_models.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0003_billing.sql && wrangler d1 execute worker-platform-db --remote --file=./migrations/0004_fix_models.sql"
 	}
 }

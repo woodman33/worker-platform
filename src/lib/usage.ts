@@ -21,6 +21,16 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "Qwen/Qwen3-8B": { input: 0.05, output: 0.15 },
   "meta-llama/Llama-3.2-3B-Instruct": { input: 0.03, output: 0.08 },
   "google/gemma-2-2b-it": { input: 0.02, output: 0.05 },
+  // New models
+  "deepseek-ai/DeepSeek-V3.2": { input: 0.3, output: 1.0 },
+  "Qwen/Qwen3-235B-A22B-Instruct-2507": { input: 0.5, output: 1.5 },
+  "Qwen/Qwen3.5-35B-A3B": { input: 0.1, output: 0.3 },
+  "CohereLabs/aya-vision-32b": { input: 0.2, output: 0.6 },
+  "microsoft/Phi-4-mini-instruct": { input: 0.03, output: 0.08 },
+  "microsoft/Phi-3.5-mini-instruct": { input: 0.02, output: 0.05 },
+  "mistralai/Mistral-Nemo-Instruct-2407": { input: 0.05, output: 0.15 },
+  "mistralai/Mixtral-8x7B-Instruct-v0.1": { input: 0.1, output: 0.3 },
+  "moonshotai/Kimi-K2-Instruct-0905": { input: 0.3, output: 1.0 },
   // Image generation
   "black-forest-labs/FLUX.1-dev": { input: 0, output: 5.0 },
 };

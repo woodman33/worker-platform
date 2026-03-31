@@ -295,25 +295,21 @@ document.getElementById("chat-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-// Image models that should use /v1/images/generations
-const IMAGE_MODELS = ["black-forest-labs/FLUX.1-dev"];
-// Non-chat models to exclude from chat playground
-const NON_CHAT_MODELS = [...IMAGE_MODELS, "intfloat/multilingual-e5-large", "facebook/detr-resnet-50", "google-bert/bert-large-uncased-whole-word-masking-finetuned-squad", "openai/whisper-large-v3", "medicalai/ClinicalBERT"];
-
-// Load models
+// Load models (only 'available' status models are returned by the API)
 fetch(API + "/v1/models").then(r => r.json()).then(data => {
   const select = document.getElementById("model-select");
-  // Filter to chat-capable models and sort
-  const chatModels = data.data.filter(m => !NON_CHAT_MODELS.includes(m.id));
-  chatModels.forEach(m => {
+  data.data.forEach(m => {
     const opt = document.createElement("option");
     opt.value = m.id;
     opt.textContent = m.id;
     select.appendChild(opt);
   });
-  // Default to a small fast model
-  const defaultModel = chatModels.find(m => m.id === "meta-llama/Llama-3.2-3B-Instruct");
-  if (defaultModel) select.value = defaultModel.id;
+  // Default to a reliable fast model
+  const preferred = ["Qwen/Qwen3-235B-A22B", "meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-R1"];
+  for (const p of preferred) {
+    const found = data.data.find(m => m.id === p);
+    if (found) { select.value = found.id; break; }
+  }
 });
 
 function showPage(name) {
