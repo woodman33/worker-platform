@@ -232,12 +232,15 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       <div>
         <label>Model</label>
         <select id="code-model">
-          <option value="Qwen/Qwen3-Coder-30B-A3B-Instruct">Qwen3-Coder-30B</option>
-          <option value="Qwen/Qwen3.5-35B-A3B">Qwen3.5-35B</option>
+          <option value="Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B (Best)</option>
+          <option value="Qwen/Qwen3-Coder-30B-A3B-Instruct">Qwen3-Coder-30B (Fast)</option>
+          <option value="Qwen/Qwen2.5-Coder-32B-Instruct">Qwen2.5-Coder-32B</option>
           <option value="deepseek-ai/DeepSeek-V3.2">DeepSeek-V3.2</option>
+          <option value="deepseek-ai/DeepSeek-Coder-V2-Instruct">DeepSeek-Coder-V2</option>
+          <option value="mistralai/Codestral-22B-v0.1">Codestral 22B</option>
           <option value="deepseek-ai/DeepSeek-R1">DeepSeek-R1 (Reasoning)</option>
-          <option value="meta-llama/Llama-3.3-70B-Instruct">Llama-3.3-70B</option>
-          <option value="mistralai/Mistral-Small-4-119B-2603">Mistral Small 4</option>
+          <option value="Qwen/Qwen3.5-397B-A17B">Qwen3.5-397B</option>
+          <option value="bigcode/starcoder2-15b">StarCoder2-15B</option>
         </select>
       </div>
       <div>
@@ -295,9 +298,12 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
           <option value="black-forest-labs/FLUX.2-dev">FLUX.2-dev (Best)</option>
           <option value="black-forest-labs/FLUX.1-dev">FLUX.1-dev</option>
           <option value="black-forest-labs/FLUX.1-schnell">FLUX.1-schnell (Fast)</option>
+          <option value="black-forest-labs/FLUX.1-Fill-dev">FLUX.1-Fill (Inpainting)</option>
           <option value="stabilityai/stable-diffusion-3.5-large">SD 3.5 Large</option>
           <option value="stabilityai/stable-diffusion-3.5-large-turbo">SD 3.5 Large Turbo (Fast)</option>
           <option value="stabilityai/stable-diffusion-3.5-medium">SD 3.5 Medium</option>
+          <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL Base 1.0</option>
+          <option value="PixArt-alpha/PixArt-XL-2-1024-MS">PixArt-alpha XL</option>
         </select>
       </div>
       <div style="flex:2;">
@@ -413,9 +419,11 @@ document.getElementById("chat-input").addEventListener("keydown", (e) => {
 });
 
 // Load models (only 'available' status models are returned by the API)
+const NON_CHAT_CAPS = ["image-generation", "video-generation", "inpainting", "object-detection", "segmentation"];
 fetch(API + "/v1/models").then(r => r.json()).then(data => {
   const select = document.getElementById("model-select");
-  data.data.forEach(m => {
+  const chatModels = data.data.filter(m => !m.capabilities.some(c => NON_CHAT_CAPS.includes(c)));
+  chatModels.forEach(m => {
     const opt = document.createElement("option");
     opt.value = m.id;
     opt.textContent = m.id;
@@ -424,7 +432,7 @@ fetch(API + "/v1/models").then(r => r.json()).then(data => {
   // Default to Qwen 3.5 flagship
   const preferred = ["Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3.5-122B-A10B", "Qwen/Qwen3.5-35B-A3B", "deepseek-ai/DeepSeek-V3.2"];
   for (const p of preferred) {
-    const found = data.data.find(m => m.id === p);
+    const found = chatModels.find(m => m.id === p);
     if (found) { select.value = found.id; break; }
   }
 });
