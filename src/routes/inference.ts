@@ -47,22 +47,29 @@ inference.post("/v1/chat/completions", apiKeyAuth, async (c) => {
   const selectedModel = model || "meta-llama/Llama-3.2-3B-Instruct";
   const startTime = Date.now();
 
-  // Proxy to HuggingFace Router
-  const hfResponse = await fetch("https://router.huggingface.co/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      model: selectedModel,
-      messages,
-      max_tokens: max_tokens || 2048,
-      temperature: temperature ?? 0.7,
-      top_p: top_p ?? 0.95,
-      stream: stream || false,
-    }),
-  });
+  let hfResponse: Response;
+  try {
+    // Proxy to HuggingFace Router
+    hfResponse = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages,
+        max_tokens: max_tokens || 2048,
+        temperature: temperature ?? 0.7,
+        top_p: top_p ?? 0.95,
+        stream: stream || false,
+      }),
+    });
+  } catch (e: any) {
+    return c.json({
+      error: { message: `Failed to connect to inference provider: ${e.message}`, type: "upstream_error" }
+    }, 502);
+  }
 
   if (!hfResponse.ok) {
     const err = await hfResponse.text();
@@ -165,19 +172,24 @@ inference.post("/v1/completions", apiKeyAuth, async (c) => {
   const selectedModel = model || "Qwen/Qwen2.5-Coder-32B-Instruct";
   const startTime = Date.now();
 
-  const hfResponse = await fetch("https://router.huggingface.co/v1/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      model: selectedModel,
-      prompt,
-      max_tokens: max_tokens || 512,
-      temperature: temperature ?? 0.7,
-    }),
-  });
+  let hfResponse: Response;
+  try {
+    hfResponse = await fetch("https://router.huggingface.co/v1/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        prompt,
+        max_tokens: max_tokens || 512,
+        temperature: temperature ?? 0.7,
+      }),
+    });
+  } catch (e: any) {
+    return c.json({ error: { message: `Failed to connect to inference provider: ${e.message}`, type: "upstream_error" } }, 502);
+  }
 
   if (!hfResponse.ok) {
     const err = await hfResponse.text();
@@ -215,20 +227,24 @@ inference.post("/v1/images/generations", apiKeyAuth, async (c) => {
   const selectedModel = model || "black-forest-labs/FLUX.1-dev";
   const startTime = Date.now();
 
-  // HF Inference API for image generation
-  const hfResponse = await fetch(`https://router.huggingface.co/v1/images/generations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      model: selectedModel,
-      prompt,
-      n: n || 1,
-      size: size || "1024x1024",
-    }),
-  });
+  let hfResponse: Response;
+  try {
+    hfResponse = await fetch(`https://router.huggingface.co/v1/images/generations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${c.env.HF_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        prompt,
+        n: n || 1,
+        size: size || "1024x1024",
+      }),
+    });
+  } catch (e: any) {
+    return c.json({ error: { message: `Failed to connect to inference provider: ${e.message}`, type: "upstream_error" } }, 502);
+  }
 
   if (!hfResponse.ok) {
     const err = await hfResponse.text();
