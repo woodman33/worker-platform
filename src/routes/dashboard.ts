@@ -136,7 +136,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     <div class="row">
       <div>
         <label>System prompt (optional)</label>
-        <input type="text" id="system-prompt" placeholder="You are a helpful assistant...">
+        <input type="text" id="system-prompt" value="You are a helpful assistant. Always respond in English unless the user writes in another language." placeholder="You are a helpful assistant...">
       </div>
       <div>
         <label>API Key</label>
@@ -232,15 +232,12 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       <div>
         <label>Model</label>
         <select id="code-model">
-          <option value="Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B (Best)</option>
-          <option value="Qwen/Qwen3-Coder-30B-A3B-Instruct">Qwen3-Coder-30B (Fast)</option>
-          <option value="Qwen/Qwen2.5-Coder-32B-Instruct">Qwen2.5-Coder-32B</option>
-          <option value="deepseek-ai/DeepSeek-V3.2">DeepSeek-V3.2</option>
+          <option value="Qwen/Qwen2.5-Coder-32B-Instruct">Qwen2.5-Coder-32B (Best)</option>
           <option value="deepseek-ai/DeepSeek-Coder-V2-Instruct">DeepSeek-Coder-V2</option>
-          <option value="mistralai/Codestral-22B-v0.1">Codestral 22B</option>
+          <option value="Qwen/Qwen3-235B-A22B-Instruct">Qwen3-235B (Reasoning)</option>
           <option value="deepseek-ai/DeepSeek-R1">DeepSeek-R1 (Reasoning)</option>
-          <option value="Qwen/Qwen3.5-397B-A17B">Qwen3.5-397B</option>
-          <option value="bigcode/starcoder2-15b">StarCoder2-15B</option>
+          <option value="meta-llama/Llama-3.3-70B-Instruct">Llama-3.3-70B</option>
+          <option value="mistralai/Mistral-Small-24B-Instruct-2501">Mistral Small 24B</option>
         </select>
       </div>
       <div>
@@ -295,15 +292,11 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       <div>
         <label>Model</label>
         <select id="img-model">
-          <option value="black-forest-labs/FLUX.2-dev">FLUX.2-dev (Best)</option>
-          <option value="black-forest-labs/FLUX.1-dev">FLUX.1-dev</option>
+          <option value="black-forest-labs/FLUX.1-dev">FLUX.1-dev (Best)</option>
           <option value="black-forest-labs/FLUX.1-schnell">FLUX.1-schnell (Fast)</option>
-          <option value="black-forest-labs/FLUX.1-Fill-dev">FLUX.1-Fill (Inpainting)</option>
           <option value="stabilityai/stable-diffusion-3.5-large">SD 3.5 Large</option>
           <option value="stabilityai/stable-diffusion-3.5-large-turbo">SD 3.5 Large Turbo (Fast)</option>
           <option value="stabilityai/stable-diffusion-3.5-medium">SD 3.5 Medium</option>
-          <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL Base 1.0</option>
-          <option value="PixArt-alpha/PixArt-XL-2-1024-MS">PixArt-alpha XL</option>
         </select>
       </div>
       <div style="flex:2;">
@@ -429,8 +422,8 @@ fetch(API + "/v1/models").then(r => r.json()).then(data => {
     opt.textContent = m.id;
     select.appendChild(opt);
   });
-  // Default to Qwen 3.5 flagship
-  const preferred = ["Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3.5-122B-A10B", "Qwen/Qwen3.5-35B-A3B", "deepseek-ai/DeepSeek-V3.2"];
+  // Default to best verified models
+  const preferred = ["Qwen/Qwen3-235B-A22B-Instruct", "deepseek-ai/DeepSeek-V3-0324", "meta-llama/Llama-3.3-70B-Instruct", "Qwen/Qwen3-32B"];
   for (const p of preferred) {
     const found = chatModels.find(m => m.id === p);
     if (found) { select.value = found.id; break; }
@@ -463,7 +456,7 @@ async function sendMessage() {
   input.value = "";
 
   const messages = [];
-  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+  messages.push({ role: "system", content: systemPrompt || "You are a helpful assistant. Always respond in English unless the user writes in another language." });
   messages.push(...chatHistory);
 
   const msgEl = addMsg("assistant", "");
