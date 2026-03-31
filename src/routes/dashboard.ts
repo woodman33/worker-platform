@@ -81,6 +81,20 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   /* API key reveal */
   .key-reveal { background: var(--bg); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; word-break: break-all; margin: 0.5rem 0; border: 1px solid var(--green); }
 
+  /* Code editor */
+  .code-editor { width: 100%; min-height: 300px; background: var(--bg); color: #a5f3fc; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: 'SF Mono', Consolas, monospace; font-size: 0.85rem; line-height: 1.6; resize: vertical; tab-size: 2; }
+  .code-editor:focus { outline: none; border-color: var(--accent); }
+  .code-output { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: 'SF Mono', Consolas, monospace; font-size: 0.8rem; line-height: 1.5; max-height: 400px; overflow-y: auto; white-space: pre-wrap; color: #a5f3fc; }
+  .lang-tag { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: #1e3a5f; color: #93c5fd; margin-right: 0.5rem; }
+  .code-toolbar { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+
+  /* Image gallery */
+  .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .img-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .img-card img { width: 100%; display: block; }
+  .img-card .img-prompt { padding: 0.75rem; font-size: 0.8rem; color: var(--muted); }
+  .img-loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--muted); }
+
   /* Quick start */
   pre { background: var(--bg); padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; line-height: 1.6; border: 1px solid var(--border); }
   code { font-family: 'SF Mono', Consolas, monospace; }
@@ -95,6 +109,8 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="showPage('keys')">API Keys</button>
     <button class="tab" onclick="showPage('usage')">Usage</button>
     <button class="tab" onclick="showPage('billing')">Billing</button>
+    <button class="tab" onclick="showPage('code')">Code</button>
+    <button class="tab" onclick="showPage('images')">Images</button>
     <button class="tab" onclick="showPage('docs')">Quick Start</button>
   </div>
   <div class="credits">Credits: <b id="nav-credits">—</b></div>
@@ -205,6 +221,107 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       <thead><tr><th>Type</th><th>Amount</th><th>Description</th><th>Balance After</th><th>Date</th></tr></thead>
       <tbody id="txn-table"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ============ CODE ============ -->
+<div id="page-code" class="page">
+  <div class="card">
+    <h2>AI Code Generator</h2>
+    <div class="code-toolbar">
+      <div>
+        <label>Model</label>
+        <select id="code-model">
+          <option value="Qwen/Qwen3-Coder-30B-A3B-Instruct">Qwen3-Coder-30B</option>
+          <option value="Qwen/Qwen3.5-35B-A3B">Qwen3.5-35B</option>
+          <option value="deepseek-ai/DeepSeek-V3.2">DeepSeek-V3.2</option>
+          <option value="deepseek-ai/DeepSeek-R1">DeepSeek-R1 (Reasoning)</option>
+          <option value="meta-llama/Llama-3.3-70B-Instruct">Llama-3.3-70B</option>
+          <option value="mistralai/Mistral-Small-4-119B-2603">Mistral Small 4</option>
+        </select>
+      </div>
+      <div>
+        <label>Language</label>
+        <select id="code-lang">
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="rust">Rust</option>
+          <option value="go">Go</option>
+          <option value="java">Java</option>
+          <option value="c++">C++</option>
+          <option value="sql">SQL</option>
+          <option value="bash">Bash</option>
+        </select>
+      </div>
+      <div style="flex:2;">
+        <label>Prompt</label>
+        <input type="text" id="code-prompt" placeholder="Describe what you want to build...">
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn btn-primary" onclick="generateCode()" id="code-gen-btn">Generate</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="display:flex;gap:1rem;">
+    <div style="flex:1;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <div><span class="lang-tag" id="code-lang-tag">python</span><span style="font-size:0.8rem;color:var(--muted);">Generated Code</span></div>
+        <button class="btn btn-sm" onclick="copyCode()">Copy</button>
+      </div>
+      <textarea class="code-editor" id="code-editor" placeholder="// Generated code will appear here...&#10;// Or write your own code and click 'Explain' or 'Improve'"></textarea>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+        <button class="btn btn-sm" onclick="explainCode()">Explain</button>
+        <button class="btn btn-sm" onclick="improveCode()">Improve</button>
+        <button class="btn btn-sm" onclick="addTests()">Add Tests</button>
+        <button class="btn btn-sm" onclick="fixBugs()">Fix Bugs</button>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div style="margin-bottom:0.5rem;font-size:0.8rem;color:var(--muted);">AI Output</div>
+      <div class="code-output" id="code-output">AI explanations, improvements, and analysis will appear here...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IMAGES ============ -->
+<div id="page-images" class="page">
+  <div class="card">
+    <h2>Image Generation</h2>
+    <div class="row">
+      <div>
+        <label>Model</label>
+        <select id="img-model">
+          <option value="black-forest-labs/FLUX.2-dev">FLUX.2-dev (Best)</option>
+          <option value="black-forest-labs/FLUX.1-dev">FLUX.1-dev</option>
+          <option value="black-forest-labs/FLUX.1-schnell">FLUX.1-schnell (Fast)</option>
+          <option value="stabilityai/stable-diffusion-3.5-large">SD 3.5 Large</option>
+          <option value="stabilityai/stable-diffusion-3.5-large-turbo">SD 3.5 Large Turbo (Fast)</option>
+          <option value="stabilityai/stable-diffusion-3.5-medium">SD 3.5 Medium</option>
+        </select>
+      </div>
+      <div style="flex:2;">
+        <label>Prompt</label>
+        <input type="text" id="img-prompt" placeholder="A futuristic city at sunset, cyberpunk style, 4k...">
+      </div>
+      <div>
+        <label>Size</label>
+        <select id="img-size">
+          <option value="1024x1024">1024x1024</option>
+          <option value="1024x768">1024x768 (Landscape)</option>
+          <option value="768x1024">768x1024 (Portrait)</option>
+          <option value="512x512">512x512 (Fast)</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn btn-primary" onclick="generateImage()" id="img-gen-btn">Generate</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Generated Images</h2>
+    <div class="img-grid" id="img-gallery"></div>
+    <div id="img-empty" style="text-align:center;padding:3rem;color:var(--muted);">No images generated yet. Enter a prompt above and click Generate.</div>
   </div>
 </div>
 
@@ -509,6 +626,185 @@ async function buyCredits(packageId) {
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+// ========== CODE GENERATOR ==========
+document.getElementById("code-lang").addEventListener("change", (e) => {
+  document.getElementById("code-lang-tag").textContent = e.target.value;
+});
+
+async function codeRequest(systemMsg, userMsg, outputEl) {
+  if (!apiKey) { outputEl.textContent = "Set your API key first."; return; }
+  const model = document.getElementById("code-model").value;
+  outputEl.textContent = "Thinking...";
+
+  try {
+    const resp = await fetch(API + "/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemMsg },
+          { role: "user", content: userMsg }
+        ],
+        max_tokens: 4096,
+        stream: true,
+      }),
+    });
+    if (!resp.ok) { const err = await resp.json(); outputEl.textContent = "Error: " + (err.error?.message || resp.statusText); return; }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = "";
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+        try {
+          const chunk = JSON.parse(line.slice(6));
+          const delta = chunk.choices?.[0]?.delta?.content || "";
+          fullText += delta;
+          outputEl.textContent = fullText;
+        } catch {}
+      }
+    }
+    return fullText;
+  } catch (e) {
+    outputEl.textContent = "Error: " + e.message;
+  }
+}
+
+async function generateCode() {
+  const lang = document.getElementById("code-lang").value;
+  const prompt = document.getElementById("code-prompt").value.trim();
+  if (!prompt) return;
+  const editor = document.getElementById("code-editor");
+  const output = document.getElementById("code-output");
+
+  const result = await codeRequest(
+    "You are an expert " + lang + " programmer. Generate clean, production-quality code. Return ONLY the code, no explanations. No markdown fences.",
+    prompt,
+    output
+  );
+  if (result) {
+    // Extract code from markdown fences if present
+    const codeMatch = result.match(/\`\`\`[a-z]*\\n?([\\s\\S]*?)\`\`\`/);
+    editor.value = codeMatch ? codeMatch[1].trim() : result.trim();
+    output.textContent = "Code generated. Use the buttons below to explain, improve, add tests, or fix bugs.";
+  }
+}
+
+async function explainCode() {
+  const code = document.getElementById("code-editor").value;
+  if (!code.trim()) return;
+  await codeRequest(
+    "You are a senior developer. Explain the code clearly and concisely. Cover what it does, how it works, and any notable patterns.",
+    "Explain this code:\\n\\n" + code,
+    document.getElementById("code-output")
+  );
+}
+
+async function improveCode() {
+  const code = document.getElementById("code-editor").value;
+  if (!code.trim()) return;
+  const result = await codeRequest(
+    "You are a senior developer. Improve the code for performance, readability, and best practices. Return the improved code with brief comments explaining changes.",
+    "Improve this code:\\n\\n" + code,
+    document.getElementById("code-output")
+  );
+  if (result) {
+    const codeMatch = result.match(/\`\`\`[a-z]*\\n?([\\s\\S]*?)\`\`\`/);
+    if (codeMatch) document.getElementById("code-editor").value = codeMatch[1].trim();
+  }
+}
+
+async function addTests() {
+  const code = document.getElementById("code-editor").value;
+  const lang = document.getElementById("code-lang").value;
+  if (!code.trim()) return;
+  await codeRequest(
+    "You are a senior " + lang + " developer. Write comprehensive unit tests for the given code. Use the standard testing framework for the language.",
+    "Write tests for:\\n\\n" + code,
+    document.getElementById("code-output")
+  );
+}
+
+async function fixBugs() {
+  const code = document.getElementById("code-editor").value;
+  if (!code.trim()) return;
+  const result = await codeRequest(
+    "You are a senior developer and bug hunter. Analyze the code for bugs, edge cases, and potential issues. Fix them and return the corrected code with comments explaining each fix.",
+    "Find and fix bugs in:\\n\\n" + code,
+    document.getElementById("code-output")
+  );
+  if (result) {
+    const codeMatch = result.match(/\`\`\`[a-z]*\\n?([\\s\\S]*?)\`\`\`/);
+    if (codeMatch) document.getElementById("code-editor").value = codeMatch[1].trim();
+  }
+}
+
+function copyCode() {
+  const code = document.getElementById("code-editor").value;
+  navigator.clipboard.writeText(code);
+}
+
+// ========== IMAGE GENERATION ==========
+let imageCount = 0;
+
+async function generateImage() {
+  const model = document.getElementById("img-model").value;
+  const prompt = document.getElementById("img-prompt").value.trim();
+  const size = document.getElementById("img-size").value;
+  if (!prompt) return;
+  if (!apiKey) { alert("Set your API key first."); return; }
+
+  document.getElementById("img-gen-btn").disabled = true;
+  document.getElementById("img-gen-btn").textContent = "Generating...";
+  document.getElementById("img-empty").style.display = "none";
+
+  // Add a loading placeholder
+  const gallery = document.getElementById("img-gallery");
+  const placeholder = document.createElement("div");
+  placeholder.className = "img-card";
+  placeholder.innerHTML = '<div class="img-loading">Generating with ' + esc(model.split("/").pop()) + '...</div><div class="img-prompt">' + esc(prompt) + '</div>';
+  gallery.prepend(placeholder);
+
+  try {
+    const resp = await fetch(API + "/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({ model, prompt, size, n: 1 }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      placeholder.querySelector(".img-loading").textContent = "Error: " + (err.error?.message || resp.statusText);
+      placeholder.querySelector(".img-loading").style.color = "var(--red)";
+      return;
+    }
+
+    const data = await resp.json();
+    const imgUrl = data.data?.[0]?.url || data.data?.[0]?.b64_json;
+    if (imgUrl) {
+      const isBase64 = !imgUrl.startsWith("http");
+      placeholder.innerHTML = '<img src="' + (isBase64 ? "data:image/png;base64," + imgUrl : imgUrl) + '" alt="' + esc(prompt) + '"><div class="img-prompt">' + esc(prompt) + '<br><span style="font-size:0.7rem;color:var(--accent);">' + esc(model) + ' | ' + size + '</span></div>';
+    } else {
+      placeholder.querySelector(".img-loading").textContent = "No image returned";
+    }
+    imageCount++;
+  } catch (e) {
+    placeholder.querySelector(".img-loading").textContent = "Error: " + e.message;
+    placeholder.querySelector(".img-loading").style.color = "var(--red)";
+  } finally {
+    document.getElementById("img-gen-btn").disabled = false;
+    document.getElementById("img-gen-btn").textContent = "Generate";
+  }
+}
 </script>
 </body>
 </html>`;
